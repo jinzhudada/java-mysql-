@@ -1,0 +1,95 @@
+package tx1;
+
+
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.*;
+
+import tx1.*;
+import txet.Tx;
+
+public class tx1 extends JFrame implements ActionListener {
+    private static final long serialVersionUID = 1L;
+    JLabel userLabel = new JLabel("用户名：");
+    JLabel passLabel = new JLabel("密码：");
+    JTextField userText = new JTextField(20);
+    JPasswordField passText = new JPasswordField(20);
+    JButton loginButton = new JButton("登录");
+    JButton cancelButton = new JButton("取消");
+    JPanel panel = new JPanel(new GridLayout(3, 2));
+
+    public tx1() {
+        super("用户登录");
+        setSize(new Dimension(300, 150));
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        panel.add(userLabel);
+        panel.add(userText);
+        panel.add(passLabel);
+        panel.add(passText);
+        panel.add(loginButton);
+        panel.add(cancelButton);
+
+        loginButton.addActionListener(this);
+        cancelButton.addActionListener(this);
+
+        add(panel);
+        setVisible(true);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == cancelButton) {
+            dispose();
+        } else {
+            String user = userText.getText();
+            String pass = new String(passText.getPassword());
+            if (isValidLogin(user, pass)) {
+                JOptionPane.showMessageDialog(this, "登录成功！");
+                dispose();
+                new Tx();
+            } else {
+                JOptionPane.showMessageDialog(this, "用户名或密码错误！");
+                passText.setText("");
+                userText.requestFocus();
+            }
+        }
+    }
+
+    public boolean isValidLogin(String user, String pass) {
+        boolean isValid = false;
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            stmt = conn.prepareStatement("SELECT * FROM user WHERE username=? AND password=?");
+            stmt.setString(1, user);
+            stmt.setString(2, pass);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                isValid = true;
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        } finally {
+            try {
+                if (rs != null)
+                    rs.close();
+                if (stmt != null)
+                    stmt.close();
+                if (conn != null)
+                    conn.close();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        return isValid;
+    }
+
+    public static void main(String[] args) {
+        new tx1();
+    }
+}

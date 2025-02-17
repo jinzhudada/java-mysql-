@@ -1,0 +1,371 @@
+package txet;
+
+import java.sql.*;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.table.DefaultTableModel;
+
+
+public class Tx implements ActionListener {
+    JLabel userLabel, passLabel;
+    JTextField userText;
+    JPasswordField passText;
+    JButton loginButton;
+    JFrame frame;
+    JMenuBar menuBar;
+    JMenu fileMenu;
+    JMenuItem exitMenuItem;
+    JPanel mainPanel;
+    JTable houseTable;
+    JButton addButton, editButton, deleteButton;
+    JLabel titleLabel, typeLabel, areaLabel, priceLabel, statusLabel;
+    JTextField titleField, typeField, areaField, priceField;
+    JComboBox<String> statusComboBox;
+    JButton okButton, cancelButton;
+    DefaultTableModel model;
+
+    
+    public Tx() {
+        frame = new JFrame("房屋管理计科2101金万顺");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        menuBar = new JMenuBar();
+        fileMenu = new JMenu("File");
+        exitMenuItem = new JMenuItem("Exit");
+        fileMenu.add(exitMenuItem);
+        menuBar.add(fileMenu);
+        frame.setJMenuBar(menuBar);
+
+        mainPanel = new JPanel(new BorderLayout());
+
+        houseTable = new JTable();
+        model = new DefaultTableModel(new Object[]{"ID", "Title", "Type", "Area", "Price", "Status", "Owner ID", "Agent ID"}, 0);
+        houseTable.setModel(model);
+        mainPanel.add(new JScrollPane(houseTable), BorderLayout.CENTER);
+
+        addButton = new JButton("Add");
+        editButton = new JButton("Edit");
+        deleteButton = new JButton("Delete");
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(addButton);
+        buttonPanel.add(editButton);
+        buttonPanel.add(deleteButton);
+
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        addButton.addActionListener(this);
+        editButton.addActionListener(this);
+        deleteButton.addActionListener(this);
+        exitMenuItem.addActionListener(this);
+
+        showHouseData();
+
+        frame.add(mainPanel);
+        frame.pack();
+        frame.setVisible(true);
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == addButton) {
+            showAddDialog();
+        } else if (e.getSource() == editButton) {
+            int rowIndex = houseTable.getSelectedRow();
+            if (rowIndex >= 0) {
+                int houseID = (int) model.getValueAt(rowIndex, 0);
+                showEditDialog(houseID);
+            } else {
+                showMessageDialog("Please select a row to edit.");
+            }
+        } else if (e.getSource() == deleteButton) {
+            int rowIndex = houseTable.getSelectedRow();
+            if (rowIndex >= 0) {
+                int houseID = (int) model.getValueAt(rowIndex, 0);
+                deleteHouseData(houseID);
+                showHouseData();
+            } else {
+                showMessageDialog("Please select a row to delete.");
+            }
+        } else if (e.getSource() == okButton) {
+            if (validateForm()) {
+                saveHouseData();
+                dialog.setVisible(false);
+                showHouseData();
+            }
+        } else if (e.getSource() == cancelButton) {
+            dialog.setVisible(false);
+        } else if (e.getSource() == exitMenuItem) {
+            System.exit(0);
+        }
+    }
+
+    public void showHouseData() {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            Statement statement = con.createStatement();
+            ResultSet result = statement.executeQuery("SELECT * FROM house");
+
+            model.setRowCount(0);
+
+            while (result.next()) {
+                int id = result.getInt("house_id");
+                String title = result.getString("title");
+                String type = result.getString("type");
+                double area = result.getDouble("area");
+                double price = result.getDouble("price");
+                String status = result.getString("status");
+                int ownerID = result.getInt("owner_id");
+                int agentID = result.getInt("agent_id");
+
+                model.addRow(new Object[]{id, title, type, area, price, status, ownerID, agentID});
+            }
+
+            statement.close();
+            con.close();
+        } catch (Exception ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public void saveHouseData() {
+        String title = titleField.getText();
+        String type = typeField.getText();
+        double area = Double.parseDouble(areaField.getText());
+        double price = Double.parseDouble(priceField.getText());
+        String status = (String) statusComboBox.getSelectedItem();
+        int ownerID = 1; // Change this value to the actual owner ID.
+        int agentID = 1; // Change this value to the actual agent ID.
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            PreparedStatement statement = con.prepareStatement(
+                    "INSERT INTO house(title, type, area, price, status, owner_id, agent_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            statement.setString(1, title);
+            statement.setString(2, type);
+            statement.setDouble(3, area);
+            statement.setDouble(4, price);
+            statement.setString(5, status);
+            statement.setInt(6, ownerID);
+            statement.setInt(7, agentID);
+            statement.executeUpdate();
+
+            statement.close();
+            con.close();
+        } catch (Exception ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public void deleteHouseData(int houseID) {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            PreparedStatement statement = con.prepareStatement(
+                    "DELETE FROM house WHERE house_id = ?");
+            statement.setInt(1, houseID);
+            statement.executeUpdate();
+
+            statement.close();
+            con.close();
+        } catch (Exception ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public boolean validateForm() {
+        String title = titleField.getText();
+        String type = typeField.getText();
+        String area = areaField.getText();
+        String price = priceField.getText();
+
+        if (title.isEmpty() || type.isEmpty() || area.isEmpty() || price.isEmpty()) {
+            showMessageDialog("Please fill all required fields.");
+            return false;
+        }
+
+        try {
+            double areaValue = Double.parseDouble(area);
+            double priceValue = Double.parseDouble(price);
+            if (areaValue <= 0) {
+                showMessageDialog("Area must be greater than 0.");
+                return false;
+            }
+            if (priceValue <= 0) {
+                showMessageDialog("Price must be greater than 0.");
+                return false;
+            }
+        } catch (NumberFormatException ex) {
+            showMessageDialog("Please enter valid numeric values for area and price.");
+            return false;
+        }
+
+        return true;
+    }
+
+    JOptionPane optionPane;
+    JDialog dialog;
+
+    public void showAddDialog() {
+        titleLabel = new JLabel("Title:* ");
+        typeLabel = new JLabel("Type:* ");
+        areaLabel = new JLabel("Area (in sq. ft.):* ");
+        priceLabel = new JLabel("Price (in USD):* ");
+        statusLabel = new JLabel("Status: ");
+
+        titleField = new JTextField(20);
+        typeField = new JTextField(20);
+        areaField = new JTextField(20);
+        priceField = new JTextField(20);
+        statusComboBox = new JComboBox<String>(new String[]{"未售出", "已售出"});
+
+        okButton = new JButton("OK");
+        cancelButton = new JButton("Cancel");
+
+        JPanel panel = new JPanel(new GridLayout(6, 2));
+        panel.add(titleLabel);
+        panel.add(titleField);
+        panel.add(typeLabel);
+        panel.add(typeField);
+        panel.add(areaLabel);
+        panel.add(areaField);
+        panel.add(priceLabel);
+        panel.add(priceField);
+        panel.add(statusLabel);
+        panel.add(statusComboBox);
+        panel.add(okButton);
+        panel.add(cancelButton);
+
+        okButton.addActionListener(this);
+        cancelButton.addActionListener(this);
+
+        dialog = new JDialog(frame, "Add House", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setSize(new Dimension(400, 250));
+        dialog.setLocationRelativeTo(frame);
+        dialog.setContentPane(panel);
+        dialog.setVisible(true);
+    }
+
+    public void showEditDialog(int houseID) {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            PreparedStatement statement = con.prepareStatement(
+                    "SELECT * FROM house WHERE house_id = ?");
+            statement.setInt(1, houseID);
+            ResultSet result = statement.executeQuery();
+            if (result.next()) {
+                titleLabel = new JLabel("Title:* ");
+                typeLabel = new JLabel("Type:* ");
+                areaLabel = new JLabel("Area (in sq. ft.):* ");
+                priceLabel = new JLabel("Price (in USD):* ");
+                statusLabel = new JLabel("Status: ");
+
+                titleField = new JTextField(20);
+                typeField = new JTextField(20);
+                areaField = new JTextField(20);
+                priceField = new JTextField(20);
+                statusComboBox = new JComboBox<String>(new String[]{"未售出", "已售出"});
+
+                okButton = new JButton("OK");
+                cancelButton = new JButton("Cancel");
+
+                titleField.setText(result.getString("title"));
+                typeField.setText(result.getString("type"));
+                areaField.setText(String.valueOf(result.getDouble("area")));
+                priceField.setText(String.valueOf(result.getDouble("price")));
+                statusComboBox.setSelectedItem(result.getString("status"));
+
+                JPanel panel = new JPanel(new GridLayout(6, 2));
+                panel.add(titleLabel);
+                panel.add(titleField);
+                panel.add(typeLabel);
+                panel.add(typeField);
+                panel.add(areaLabel);
+                panel.add(areaField);
+                panel.add(priceLabel);
+                panel.add(priceField);
+                panel.add(statusLabel);
+                panel.add(statusComboBox);
+                panel.add(okButton);
+                panel.add(cancelButton);
+
+                okButton.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        if (validateForm()) {
+                            updateHouseData(houseID);
+                            dialog.setVisible(false);
+                            showHouseData();
+                        }
+                    }
+                });
+
+                cancelButton.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        dialog.setVisible(false);
+                    }
+                });
+
+                dialog = new JDialog(frame, "Edit House", true);
+                dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+                dialog.setSize(new Dimension(400, 250));
+                dialog.setLocationRelativeTo(frame);
+                dialog.setContentPane(panel);
+                dialog.setVisible(true);
+            }
+            statement.close();
+            con.close();
+        } catch (Exception ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public void updateHouseData(int houseID) {
+        String title = titleField.getText();
+        String type = typeField.getText();
+        double area = Double.parseDouble(areaField.getText());
+        double price = Double.parseDouble(priceField.getText());
+        String status = (String) statusComboBox.getSelectedItem();
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(
+                    "jdbc:mysql://localhost:3306/jinwanshun", "root", "123321");
+            PreparedStatement statement = con.prepareStatement(
+                    "UPDATE house SET title = ?, type = ?, area = ?, price = ?, status = ? WHERE house_id = ?");
+            statement.setString(1, title);
+            statement.setString(2, type);
+            statement.setDouble(3, area);
+            statement.setDouble(4, price);
+            statement.setString(5, status);
+            statement.setInt(6, houseID);
+            statement.executeUpdate();
+
+            statement.close();
+            con.close();
+        } catch (Exception ex) {
+            System.out.println(ex);
+        }
+    }
+
+    public void showMessageDialog(String message) {
+        if (optionPane == null) {
+            optionPane = new JOptionPane(message, JOptionPane.ERROR_MESSAGE);
+        } else {
+            optionPane.setMessage(message);
+        }
+        JDialog dialog = optionPane.createDialog("Error");
+        dialog.setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new Tx();
+    }
+}
